@@ -64,10 +64,13 @@ public abstract class UpdateStmt extends StatementBase {
   protected final Expr wherePredicate_;
 
   // Path identifying the target table.
-  private final List<String> targetTablePath_;
+  protected final List<String> targetTablePath_;
 
   // TableRef identifying the target table, set during analysis.
   protected TableRef targetTableRef_;
+
+  /////////////////////////////////////////
+  // BEGIN: Members that need to be reset()
 
   protected FromClause fromClause_;
 
@@ -83,6 +86,9 @@ public abstract class UpdateStmt extends StatementBase {
   // target table. The i'th position in this list maps to the referencedColumns_[i]'th
   // position in the target table. Set in createSourceStmt() during analysis.
   protected ArrayList<Integer> referencedColumns_;
+
+  // END: Members that need to be reset()
+  /////////////////////////////////////////
 
   // On tables with a primary key, ignore key not found errors.
   protected final boolean ignoreNotFound_;
@@ -153,6 +159,15 @@ public abstract class UpdateStmt extends StatementBase {
     createSourceStmt(analyzer);
   }
 
+  @Override
+  public void reset() {
+    super.reset();
+    fromClause_.reset();
+    sourceStmt_ = null;
+    table_ = null;
+    referencedColumns_.clear();
+  }
+
   /**
    * Builds and validates the sourceStmt_. The select list of the sourceStmt_ contains
    * first the SlotRefs for the key Columns, followed by the expressions representing the
@@ -167,33 +182,30 @@ public abstract class UpdateStmt extends StatementBase {
     buildAndValidateAssignmentExprs(analyzer, selectList, referencedColumns_);
 
     // Analyze the generated select statement.
-    SelectStmt srcStmt =
-        new SelectStmt(new SelectList(selectList), fromClause_, wherePredicate_,
-            null, null, null, null);
-    srcStmt.analyze(analyzer);
-
-    if (analyzer.containsSubquery()) {
-      StmtRewriter.rewriteQueryStatement(srcStmt, analyzer);
-      srcStmt = (SelectStmt) srcStmt.clone();
-
-      // After the clone, the state of all table refs is reset. Use a child analyzer
-      // to avoid clashing with registered table refs in 'analyzer'
-      // TODO(Kudu) After merge, clean this up by implementing proper reset() / clone()
-      srcStmt.analyze(new Analyzer(analyzer));
-
-      // Force no additional rewrite
-      // TODO(Kudu) Remove method after merge as rewrite is handled with reset() / clone()
-      analyzer.resetSubquery();
-    }
+    sourceStmt_ = new SelectStmt(new SelectList(selectList), fromClause_, wherePredicate_,
+        null, null, null, null);
+    sourceStmt_.analyze(analyzer);
 
     // cast result expressions to the correct type of the referenced slot of the
     // target table
     int keyColumnsOffset = table_.getKuduKeyColumnNames().size();
-    for(int i = keyColumnsOffset; i < srcStmt.resultExprs_.size(); ++i) {
-      srcStmt.resultExprs_.set(i, srcStmt.resultExprs_.get(i).castTo(
+    for(int i = keyColumnsOffset; i < sourceStmt_.resultExprs_.size(); ++i) {
+      sourceStmt_.resultExprs_.set(i, sourceStmt_.resultExprs_.get(i).castTo(
           assignments_.get(i - keyColumnsOffset).first.getType()));
     }
-    sourceStmt_ = srcStmt;
+
+    //if (analyzer.containsSubquery()) return;
+      //StmtRewriter.rewriteQueryStatement(srcStmt, analyzer);
+      //srcStmt = (SelectStmt) srcStmt.clone();
+
+      // After the clone, the state of all table refs is reset. Use a child analyzer
+      // to avoid clashing with registered table refs in 'analyzer'
+      // TODO(Kudu) After merge, clean this up by implementing proper reset() / clone()
+      //srcStmt.analyze(new Analyzer(analyzer));
+
+      // Force no additional rewrite
+      // TODO(Kudu) Remove method after merge as rewrite is handled with reset() / clone()
+      //analyzer.resetSubquery();
   }
 
   /**

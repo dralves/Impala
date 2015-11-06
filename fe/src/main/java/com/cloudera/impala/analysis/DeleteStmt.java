@@ -20,6 +20,7 @@ import com.cloudera.impala.common.Pair;
 import com.cloudera.impala.planner.KuduTableSink;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import org.apache.hadoop.hbase.client.Delete;
 
 /**
  * Representation of a DELETE statement.
@@ -44,6 +45,12 @@ public class DeleteStmt extends UpdateStmt {
     // analyze() must have been called before.
     Preconditions.checkState(table_ != null);
     return KuduTableSink.createDeleteSink(table_, referencedColumns_,
+        ignoreNotFound_);
+  }
+
+  @Override
+  public DeleteStmt clone() {
+    return new DeleteStmt(targetTablePath_, fromClause_, wherePredicate_,
         ignoreNotFound_);
   }
 

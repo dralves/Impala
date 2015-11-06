@@ -45,6 +45,12 @@ public class UpdateStmt2 extends UpdateStmt {
   }
 
   @Override
+  public UpdateStmt2 clone() {
+    return new UpdateStmt2(targetTablePath_, fromClause_, assignments_,
+        wherePredicate_, ignoreNotFound_);
+  }
+
+  @Override
   public String toSql() {
     StringBuilder b = new StringBuilder();
     b.append("UPDATE ");
