@@ -672,11 +672,7 @@ StructType* TupleDescriptor::GetLlvmStruct(LlvmCodeGen* codegen) const {
         byte_size_ - curr_struct_offset));
   }
 
-  // Construct the struct type. Use the packed layout although not strictly necessary
-  // because the fields are already aligned, so LLVM should not add any padding. The
-  // fields are already aligned because we order the slots by descending size and only
-  // have powers-of-two slot sizes. Note that STRING and TIMESTAMP slots both occupy
-  // 16 bytes although their useful payload is only 12 bytes.
+  // Construct the struct type. Use the packed layout.
   StructType* tuple_struct = StructType::get(codegen->context(),
       ArrayRef<Type*>(struct_fields), true);
   const DataLayout& data_layout = codegen->execution_engine()->getDataLayout();

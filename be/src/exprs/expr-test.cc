@@ -5310,7 +5310,8 @@ void ValidateLayout(const vector<Expr*>& exprs, int expected_byte_size,
     int computed_offset = offsets[i];
     // The computed offset has to be one of the possible.  Exprs types with the
     // same size are not ordered wrt each other.
-    EXPECT_TRUE(possible_offsets.find(computed_offset) != possible_offsets.end());
+    EXPECT_TRUE(possible_offsets.find(computed_offset) != possible_offsets.end())
+        << "Couldn't find offset: " << computed_offset;
     // The offset should not have been found before
     EXPECT_TRUE(offsets_found.find(computed_offset) == offsets_found.end());
     offsets_found.insert(computed_offset);
@@ -5384,28 +5385,30 @@ TEST_F(ExprTest, ResultsLayoutTest) {
   expected_offsets[1].insert(expected_byte_size);
   expected_offsets[1].insert(expected_byte_size + 1);
   expected_offsets[1].insert(expected_byte_size + 2);
-  expected_byte_size += 3 * 1 + 1;  // 1 byte of padding
+  expected_byte_size += 3 * 1;
 
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_SMALLINT, "0")));
+  expected_byte_size += 1; // Pad one byte to be 2-aligned. Offset: 4
   expected_offsets[2].insert(expected_byte_size);
-  expected_byte_size += 2; // No padding before CHAR
+  expected_byte_size += 2; // Offset: 6
 
   exprs.push_back(pool.Add(Literal::CreateLiteral(ColumnType::CreateCharType(3), "0")));
   expected_offsets[3].insert(expected_byte_size);
-  expected_byte_size += 3 + 3; // 3 byte of padding
-  ASSERT_EQ(expected_byte_size % 4, 0);
+  // No padding before CHAR
+  expected_byte_size += 3; // Offset: 9
 
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_INT, "0")));
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_FLOAT, "0")));
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_FLOAT, "0")));
   exprs.push_back(pool.Add(
       Literal::CreateLiteral(ColumnType::CreateDecimalType(9, 0), "0")));
+  expected_byte_size += 3; // Pad 3 bytes to be 4-aligned. Offset: 12
+  ASSERT_EQ(expected_byte_size % 4, 0);
   expected_offsets[4].insert(expected_byte_size);
   expected_offsets[4].insert(expected_byte_size + 4);
   expected_offsets[4].insert(expected_byte_size + 8);
   expected_offsets[4].insert(expected_byte_size + 12);
-  expected_byte_size += 4 * 4 + 4;  // 4 bytes of padding
-  ASSERT_EQ(expected_byte_size % 8, 0);
+  expected_byte_size += 4 * 4;  // Offset: 28
 
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_BIGINT, "0")));
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_BIGINT, "0")));
@@ -5413,23 +5416,29 @@ TEST_F(ExprTest, ResultsLayoutTest) {
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_DOUBLE, "0")));
   exprs.push_back(pool.Add(
       Literal::CreateLiteral(ColumnType::CreateDecimalType(18, 0), "0")));
+  expected_byte_size += 4; // Pad 4 bytes to be 8-aligned. Offset: 32
+  ASSERT_EQ(expected_byte_size % 8, 0);
   expected_offsets[8].insert(expected_byte_size);
   expected_offsets[8].insert(expected_byte_size + 8);
   expected_offsets[8].insert(expected_byte_size + 16);
   expected_offsets[8].insert(expected_byte_size + 24);
   expected_offsets[8].insert(expected_byte_size + 32);
-  expected_byte_size += 5 * 8;      // No more padding
+  expected_byte_size += 5 * 8; // Offset: 64
   ASSERT_EQ(expected_byte_size % 8, 0);
 
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_TIMESTAMP, "2016-11-09")));
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_TIMESTAMP, "2016-11-09")));
+  expected_offsets[12].insert(expected_byte_size);
+  expected_byte_size += 12; // Offset: 76
+  expected_byte_size += 4; // Pad 4 bytes to be 8-aligned. Offset: 80
+  expected_offsets[12].insert(expected_byte_size);
+  expected_byte_size += 12; // Offset: 92
+
   exprs.push_back(pool.Add(
       Literal::CreateLiteral(ColumnType::CreateDecimalType(20, 0), "0")));
+  expected_byte_size += 4; // Pad 4 bytes to be 8-aligned. Offset: 96
   expected_offsets[16].insert(expected_byte_size);
-  expected_offsets[16].insert(expected_byte_size + 16);
-  expected_offsets[16].insert(expected_byte_size + 32);
-  expected_byte_size += 3 * 16;
-  ASSERT_EQ(expected_byte_size % 8, 0);
+  expected_byte_size += 16; // Offset: 112
 
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_STRING, "0")));
   exprs.push_back(pool.Add(Literal::CreateLiteral(TYPE_STRING, "0")));
@@ -5439,8 +5448,7 @@ TEST_F(ExprTest, ResultsLayoutTest) {
   expected_offsets[0].insert(expected_byte_size + 16);
   expected_offsets[0].insert(expected_byte_size + 32);
   expected_var_begin = expected_byte_size;
-  expected_byte_size += 3 * 16;
-  ASSERT_EQ(expected_byte_size % 8, 0);
+  expected_byte_size += 3 * 16; // Offset: 160
 
   // Validate computed layout
   ValidateLayout(exprs, expected_byte_size, expected_var_begin, expected_offsets);

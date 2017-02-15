@@ -474,10 +474,10 @@ Status Literal::GetCodegendComputeFn(LlvmCodeGen* codegen, llvm::Function** fn) 
       }
       break;
     case TYPE_TIMESTAMP:
-      v.SetTimeOfDay(builder.getInt64(
-          *reinterpret_cast<const int64_t*>(&value_.timestamp_val.time())));
       v.SetDate(builder.getInt32(
           *reinterpret_cast<const int32_t*>(&value_.timestamp_val.date())));
+      v.SetTimeOfDay(builder.getInt64(
+          *reinterpret_cast<const int64_t*>(&value_.timestamp_val.time())));
       break;
     default:
       stringstream ss;

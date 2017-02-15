@@ -478,19 +478,19 @@ void CodegenAnyVal::SetFromRawValue(Value* raw_val) {
     case TYPE_TIMESTAMP: {
       // Convert TimestampValue to TimestampVal
       // TimestampValue has type
-      //   { boost::posix_time::time_duration, boost::gregorian::date }
-      // = { {{{i64}}}, {{i32}} }
+      //   { boost::gregorian::date, boost::posix_time::time_duration }
+      // = { {{i32}}, {{{i64}}} }
 
+      // Extract i32 from boost::gregorian::date
+      uint32_t date_idxs[] = {0, 0, 0};
+      Value* date = builder_->CreateExtractValue(raw_val, date_idxs, "date");
+      DCHECK(date->getType()->isIntegerTy(32));
       // Extract time_of_day i64 from boost::posix_time::time_duration.
-      uint32_t time_of_day_idxs[] = {0, 0, 0, 0};
+      uint32_t time_of_day_idxs[] = {1, 0, 0, 0};
       Value* time_of_day =
           builder_->CreateExtractValue(raw_val, time_of_day_idxs, "time_of_day");
       DCHECK(time_of_day->getType()->isIntegerTy(64));
       SetTimeOfDay(time_of_day);
-      // Extract i32 from boost::gregorian::date
-      uint32_t date_idxs[] = {1, 0, 0};
-      Value* date = builder_->CreateExtractValue(raw_val, date_idxs, "date");
-      DCHECK(date->getType()->isIntegerTy(32));
       SetDate(date);
       break;
     }
@@ -534,12 +534,12 @@ Value* CodegenAnyVal::ToNativeValue(MemPool* pool) {
     case TYPE_TIMESTAMP: {
       // Convert TimestampVal to TimestampValue
       // TimestampValue has type
-      //   { boost::posix_time::time_duration, boost::gregorian::date }
-      // = { {{{i64}}}, {{i32}} }
-      uint32_t time_of_day_idxs[] = {0, 0, 0, 0};
-      raw_val = builder_->CreateInsertValue(raw_val, GetTimeOfDay(), time_of_day_idxs);
-      uint32_t date_idxs[] = {1, 0, 0};
+      //   { boost::gregorian::date, boost::posix_time::time_duration }
+      // = { {{i32}}, {{{i64}}} }
+      uint32_t date_idxs[] = {0, 0, 0};
       raw_val = builder_->CreateInsertValue(raw_val, GetDate(), date_idxs);
+      uint32_t time_of_day_idxs[] = {1, 0, 0, 0};
+      raw_val = builder_->CreateInsertValue(raw_val, GetTimeOfDay(), time_of_day_idxs);
       break;
     }
     case TYPE_BOOLEAN:

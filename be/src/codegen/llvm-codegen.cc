@@ -567,6 +567,8 @@ Constant* LlvmCodeGen::GetIntConstant(PrimitiveType type, uint64_t val) {
       return ConstantInt::get(context(), APInt(32, val));
     case TYPE_BIGINT:
       return ConstantInt::get(context(), APInt(64, val));
+    case TYPE_TIMESTAMP:
+      return ConstantInt::get(context(), APInt(96, val));
     default:
       DCHECK(false);
       return NULL;

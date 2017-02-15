@@ -206,11 +206,11 @@ static void CodegenAssignNullValue(
         break;
       case TYPE_TIMESTAMP: {
         // Cast 'dst' to 'i128*'
-        DCHECK_EQ(byte_size, 16);
+        DCHECK_EQ(byte_size, 12);
         PointerType* fnv_seed_ptr_type =
             codegen->GetPtrType(Type::getIntNTy(codegen->context(), byte_size * 8));
         dst = builder->CreateBitCast(dst, fnv_seed_ptr_type);
-        null_value = codegen->GetIntConstant(byte_size, fnv_seed, fnv_seed);
+        null_value = codegen->GetIntConstant(TYPE_TIMESTAMP, fnv_seed);
         break;
       }
       case TYPE_TINYINT:

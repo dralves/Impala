@@ -36,8 +36,9 @@ public enum PrimitiveType {
   DOUBLE("DOUBLE", 8, TPrimitiveType.DOUBLE),
   DATE("DATE", 4, TPrimitiveType.DATE),
   DATETIME("DATETIME", 8, TPrimitiveType.DATETIME),
-  // The timestamp structure is 12 bytes, Aligning to 8 bytes makes it 16.
-  TIMESTAMP("TIMESTAMP", 16, TPrimitiveType.TIMESTAMP),
+  // The timestamp structure is 12 bytes. It's packed (i.e. not aligned to the next 8
+  // bytes) for compatibility with Apache Kudu's TIMESTAMP_NANOS type.
+  TIMESTAMP("TIMESTAMP", 12, TPrimitiveType.TIMESTAMP),
   // 8-byte pointer and 4-byte length indicator (12 bytes total).
   // Aligning to 8 bytes so 16 total.
   STRING("STRING", 16, TPrimitiveType.STRING),

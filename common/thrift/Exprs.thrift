@@ -68,7 +68,7 @@ struct TIntLiteral {
 }
 
 struct TTimestampLiteral {
-  // 16-byte raw representation of a TimestampValue
+  // 12-byte raw representation of a TimestampValue
   1: required binary value
 }
 

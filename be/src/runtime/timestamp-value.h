@@ -39,6 +39,13 @@ namespace impala {
 
 struct DateTimeFormatContext;
 
+// Use 4-byte alignment packing for this class so that Impala's TimestampValue
+// only uses 12 bytes (4-byte date, 8-byte time), which is the same format as
+// Kudu's TimestampValue.
+// Note that while packing with a #pragma works, packing using __attribute__((packed))
+// fails with: "ignoring packed attribute because of unpacked non-POD field".
+#pragma pack(push, 4)
+
 /// Represents either a (1) date and time, (2) a date with an undefined time, or (3)
 /// a time with an undefined date. In all cases, times have up to nanosecond resolution
 /// and the minimum and maximum dates are 1400-01-01 and 10000-12-31.
@@ -73,12 +80,12 @@ class TimestampValue {
 
   TimestampValue(const boost::gregorian::date& d,
       const boost::posix_time::time_duration& t)
-      : time_(t),
-        date_(d) {}
+      : date_(d),
+        time_(t) {}
   TimestampValue(const boost::posix_time::ptime& t)
-      : time_(t.time_of_day()),
-        date_(t.date()) {}
-  TimestampValue(const TimestampValue& tv) : time_(tv.time_), date_(tv.date_) {}
+      : date_(t.date()),
+        time_(t.time_of_day()) {}
+  TimestampValue(const TimestampValue& tv) : date_(tv.date_), time_(tv.time_) {}
   TimestampValue(const char* str, int len);
   TimestampValue(const char* str, int len, const DateTimeFormatContext& dt_ctx);
 
@@ -247,16 +254,11 @@ class TimestampValue {
   /// to a Unix time stored as a double.
   static const double ONE_BILLIONTH;
 
-  /// Boost ptime leaves a gap in the structure, so we swap the order to make it
-  /// 12 contiguous bytes.  We then must convert to and from the boost ptime data type.
-  /// See IMP-87 for more information on why using ptime with the 4 byte gap is
-  /// problematic.
+  /// 4 -bytes - stores the date as a day
+  boost::gregorian::date date_;
 
   /// 8 bytes - stores the nanoseconds within the current day
   boost::posix_time::time_duration time_;
-
-  /// 4 -bytes - stores the date as a day
-  boost::gregorian::date date_;
 
   /// Return a ptime representation of the given Unix time (seconds since the Unix epoch).
   /// The time zone of the resulting ptime is determined by
@@ -264,6 +266,8 @@ class TimestampValue {
   /// will be in the local time zone. If the flag is false, the value will be in UTC.
   boost::posix_time::ptime UnixTimeToPtime(time_t unix_time) const;
 };
+
+#pragma pack(pop)
 
 /// This function must be called 'hash_value' to be picked up by boost.
 inline std::size_t hash_value(const TimestampValue& v) {

@@ -27,7 +27,7 @@ import org.apache.impala.thrift.TTimestampLiteral;
 import org.apache.kudu.client.shaded.com.google.common.base.Preconditions;
 
 /**
- * Represents a literal timestamp. Its value is a 16-byte array that corresponds to a
+ * Represents a literal timestamp. Its value is a 12-byte array that corresponds to a
  * raw BE TimestampValue, e.g., in a slot. In addition, it stores the string
  * representation of the timestamp value to avoid converting the raw bytes on the Java
  * side. Such a conversion could potentially be inconsistent with what the BE would

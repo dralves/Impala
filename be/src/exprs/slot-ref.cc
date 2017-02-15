@@ -251,15 +251,15 @@ Status SlotRef::GetCodegendComputeFn(LlvmCodeGen* codegen, llvm::Function** fn) 
     Value* len_ptr = builder.CreateStructGEP(NULL, val_ptr, 1, "len_ptr");
     len = builder.CreateLoad(len_ptr, "len");
   } else if (type() == TYPE_TIMESTAMP) {
-    Value* time_of_day_ptr = builder.CreateStructGEP(NULL, val_ptr, 0, "time_of_day_ptr");
+    Value* date_ptr = builder.CreateStructGEP(NULL, val_ptr, 0, "date_ptr");
+    // Cast boost::gregorian::date to i32
+    Value* date_cast = builder.CreateBitCast(date_ptr, codegen->GetPtrType(TYPE_INT));
+    date = builder.CreateLoad(date_cast, "date");
+    Value* time_of_day_ptr = builder.CreateStructGEP(NULL, val_ptr, 1, "time_of_day_ptr");
     // Cast boost::posix_time::time_duration to i64
     Value* time_of_day_cast =
         builder.CreateBitCast(time_of_day_ptr, codegen->GetPtrType(TYPE_BIGINT));
     time_of_day = builder.CreateLoad(time_of_day_cast, "time_of_day");
-    Value* date_ptr = builder.CreateStructGEP(NULL, val_ptr, 1, "date_ptr");
-    // Cast boost::gregorian::date to i32
-    Value* date_cast = builder.CreateBitCast(date_ptr, codegen->GetPtrType(TYPE_INT));
-    date = builder.CreateLoad(date_cast, "date");
   } else {
     // val_ptr is a native type
     val = builder.CreateLoad(val_ptr, "val");
@@ -309,21 +309,11 @@ Status SlotRef::GetCodegendComputeFn(LlvmCodeGen* codegen, llvm::Function** fn) 
     result.SetLen(len_phi);
     builder.CreateRet(result.GetLoweredValue());
   } else if (type() == TYPE_TIMESTAMP) {
-    DCHECK(time_of_day != NULL);
     DCHECK(date != NULL);
-    PHINode* time_of_day_phi =
-        builder.CreatePHI(time_of_day->getType(), 2, "time_of_day_phi");
-    Value* null = ConstantInt::get(time_of_day->getType(), 0);
-    if (tuple_is_nullable_) {
-      time_of_day_phi->addIncoming(null, entry_block);
-    }
-    if (check_slot_null_indicator_block != NULL) {
-      time_of_day_phi->addIncoming(null, check_slot_null_indicator_block);
-    }
-    time_of_day_phi->addIncoming(time_of_day, get_slot_block);
+    DCHECK(time_of_day != NULL);
 
     PHINode* date_phi = builder.CreatePHI(date->getType(), 2, "date_phi");
-    null = ConstantInt::get(date->getType(), 0);
+    Value* null = ConstantInt::get(date->getType(), 0);
     if (tuple_is_nullable_) {
       date_phi->addIncoming(null, entry_block);
     }
@@ -332,11 +322,22 @@ Status SlotRef::GetCodegendComputeFn(LlvmCodeGen* codegen, llvm::Function** fn) 
     }
     date_phi->addIncoming(date, get_slot_block);
 
+    PHINode* time_of_day_phi =
+        builder.CreatePHI(time_of_day->getType(), 2, "time_of_day_phi");
+    null = ConstantInt::get(time_of_day->getType(), 0);
+    if (tuple_is_nullable_) {
+      time_of_day_phi->addIncoming(null, entry_block);
+    }
+    if (check_slot_null_indicator_block != NULL) {
+      time_of_day_phi->addIncoming(null, check_slot_null_indicator_block);
+    }
+    time_of_day_phi->addIncoming(time_of_day, get_slot_block);
+
     CodegenAnyVal result =
         CodegenAnyVal::GetNonNullVal(codegen, &builder, type(), "result");
     result.SetIsNull(is_null_phi);
-    result.SetTimeOfDay(time_of_day_phi);
     result.SetDate(date_phi);
+    result.SetTimeOfDay(time_of_day_phi);
     builder.CreateRet(result.GetLoweredValue());
   } else {
     DCHECK(val != NULL);

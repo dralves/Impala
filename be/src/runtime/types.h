@@ -227,8 +227,7 @@ struct ColumnType {
       case TYPE_DOUBLE:
         return 8;
       case TYPE_TIMESTAMP:
-        // This is the size of the slot, the actual size of the data is 12.
-        return 16;
+        return 12;
       case TYPE_DECIMAL:
         return GetDecimalByteSize(precision);
       case TYPE_DATE:
